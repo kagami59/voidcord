@@ -30,14 +30,21 @@ username = userinfo["username"]
 discriminator = userinfo["discriminator"]
 userid = userinfo["id"]
 
-def joiner(token, status):
-    ws = websocket.create_connection('wss://gateway.discord.gg/?v=9&encoding=json')
-    start = json.loads(ws.recv())
-    heartbeat = start['d']['heartbeat_interval']
-    auth = {
+def on_message(ws, message):
+    print(message)
+
+def on_error(ws, error):
+    print(error)
+
+def on_close(ws, close_status_code, close_msg):
+    print("Closed with status code", close_status_code, "and message", close_msg)
+
+def on_open(ws):
+    print("WebSocket connection opened.")
+    auth_payload = {
         "op": 2,
         "d": {
-            "token": token,
+            "token": usertoken,
             "properties": {
                 "$os": "Windows 10",
                 "$browser": "Google Chrome",
@@ -47,11 +54,9 @@ def joiner(token, status):
                 "status": status,
                 "afk": False
             }
-        },
-        "s": None,
-        "t": None
+        }
     }
-    vc = {
+    vc_payload = {
         "op": 4,
         "d": {
             "guild_id": GUILD_ID,
@@ -60,10 +65,15 @@ def joiner(token, status):
             "self_deaf": SELF_DEAF
         }
     }
-    ws.send(json.dumps(auth))
-    ws.send(json.dumps(vc))
-    time.sleep(heartbeat / 1000)
-    ws.send(json.dumps({"op": 1, "d": None}))
+    ws.send(json.dumps(auth_payload))
+    ws.send(json.dumps(vc_payload))
+
+def joiner(token, status):
+    websocket.enableTrace(True)
+    ws_url = 'wss://gateway.discord.gg/?v=9&encoding=json'
+    ws = websocket.WebSocketApp(ws_url, on_message=on_message, on_error=on_error, on_close=on_close)
+    ws.on_open = on_open
+    ws.run_forever()
 
 def run_joiner():
     os.system("clear")
